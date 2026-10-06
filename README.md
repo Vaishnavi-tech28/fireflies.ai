@@ -205,9 +205,8 @@ where preferred.
 ### Lint / build
 
 ```bash
-bun run lint       # ESLint
-bun run db:push    # apply schema changes (accepts data loss for dev)
-bun run db:generate
+npm run lint
+npm run build
 ```
 
 ### Environment
@@ -217,6 +216,17 @@ Set `DATABASE_URL` in `.env` (copy `.env.example` for local development):
 ```
 DATABASE_URL="file:./db/custom.db"
 ```
+
+### Production runtime
+
+The production build uses Next.js standalone output. `npm run build` prepares
+the standalone server and copies its static assets; `npm run start` launches
+that server. For hosting, set `DATABASE_URL` to an absolute SQLite path on a
+persistent writable disk (for example, `file:/var/data/custom.db`). The
+platform's ephemeral filesystem is not suitable for the database. Initialize
+an empty database with `npm run db:push`; optionally run `npm run db:seed` once
+to load demo content. Seeding replaces existing meetings and should not be
+rerun against data you want to keep.
 
 ---
 
