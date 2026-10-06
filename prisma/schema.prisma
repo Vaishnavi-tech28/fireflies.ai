@@ -1,0 +1,189 @@
+// =============================================================
+// Fireflies Clone - Prisma Schema
+// Database: SQLite
+// =============================================================
+// Design overview:
+//  - User: the application account holder (a single default user
+//    is assumed to be logged in for this assignment).
+//  - Person: a real-world person who appears in meetings as a
+//    speaker/participant. Reused across meetings so we avoid
+//    duplicating speaker identities.
+//  - Meeting: the central entity. One meeting has many transcript
+//    segments, action items, topics, comments and (optionally)
+//    a single AI summary plus a set of tags.
+//  - TranscriptSegment: a single line of the transcript with a
+//    speaker and a time range. Clicking it should seek the player.
+//  - ActionItem: tasks extracted from the meeting.
+//  - Summary: one-per-meeting AI summary (overview + structured
+//    key points and decisions stored as JSON strings, since SQLite
+//    has no native array/JSON type).
+//  - Topic: chapters / outline entries anchored to timestamps.
+//  - Comment: comments / highlights / soundbites attached to a
+//    segment and/or a time range.
+//  - Tag + MeetingTag: many-to-many tagging for filtering.
+// =============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  avatarUrl String?
+  role      String   @default("user") // user | admin
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organizedMeetings Meeting[]
+  comments          Comment[]
+}
+
+model Person {
+  // A real-world person who appears as a speaker / participant.
+  // Distinct from User (the logged-in account holder) so the same
+  // speaker can be reused across meetings and edited in one place.
+  id          String   @id @default(cuid())
+  name        String
+  email       String?  @unique
+  avatarColor String   @default("#f59e0b") // fallback avatar background
+  title       String?  // e.g. "Product Manager"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  meetingParticipants MeetingParticipant[]
+  segments           TranscriptSegment[]
+}
+
+model Meeting {
+  id          String   @id @default(cuid())
+  title        String
+  date         DateTime
+  durationSec  Int      // total duration in seconds
+  organizerId  String?
+  source       String   @default("upload") // upload | manual | bot | integrations
+  status       String   @default("completed") // processing | completed | failed
+  audioUrl     String?  // optional sample audio/video file
+  meetingType  String   @default("Internal Call") // e.g. Sales Call, Standup, Interview
+  notes        String?  // freeform private notes
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  organizer   User?    @relation(fields: [organizerId], references: [id])
+  participants MeetingParticipant[]
+  segments     TranscriptSegment[]
+  actionItems  ActionItem[]
+  summary      Summary?
+  topics       Topic[]
+  comments     Comment[]
+  tags         MeetingTag[]
+}
+
+model MeetingParticipant {
+  id        String  @id @default(cuid())
+  meetingId String
+  personId  String
+  role      String? // host | attendee | guest
+  meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  person    Person  @relation(fields: [personId], references: [id])
+
+  @@unique([meetingId, personId])
+  @@index([personId])
+}
+
+model TranscriptSegment {
+  id         String  @id @default(cuid())
+  meetingId  String
+  speakerId  String
+  startTime  Int     // seconds from start
+  endTime    Int     // seconds from start
+  text       String
+  confidence Float   @default(1.0)
+  meeting    Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  speaker    Person  @relation(fields: [speakerId], references: [id])
+
+  comments   Comment[]
+
+  @@index([meetingId, startTime])
+}
+
+model ActionItem {
+  id          String    @id @default(cuid())
+  meetingId   String
+  text        String
+  assignee    String?   // free-text assignee label (e.g. a name)
+  assigneeId  String?  // optional link to a Person
+  dueDate     DateTime?
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+  priority    String    @default("medium") // low | medium | high
+  createdAt   DateTime  @default(now())
+  meeting     Meeting   @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  @@index([meetingId])
+}
+
+model Summary {
+  id         String   @id @default(cuid())
+  meetingId  String   @unique
+  overview   String   // markdown overview
+  keyPoints  String   // JSON stringified array of strings
+  decisions  String   // JSON stringified array of strings
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  meeting    Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+}
+
+model Topic {
+  id         String   @id @default(cuid())
+  meetingId  String
+  name       String
+  startTime  Int      // seconds
+  endTime    Int?
+  summary    String?
+  meeting    Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  @@index([meetingId, startTime])
+}
+
+model Comment {
+  id         String   @id @default(cuid())
+  meetingId  String
+  segmentId  String?
+  userId     String?
+  text       String
+  startTime  Int?     // anchored timestamp (for highlights/soundbites)
+  endTime     Int?
+  type       String   @default("comment") // comment | highlight | soundbite
+  createdAt  DateTime @default(now())
+  meeting    Meeting             @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  segment    TranscriptSegment? @relation(fields: [segmentId], references: [id])
+  user       User?               @relation(fields: [userId], references: [id])
+
+  @@index([meetingId])
+}
+
+model Tag {
+  id        String       @id @default(cuid())
+  name      String       @unique
+  color     String       @default("#f59e0b")
+  meetings  MeetingTag[]
+
+  @@index([name])
+}
+
+model MeetingTag {
+  meetingId String
+  tagId     String
+  meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  tag       Tag     @relation(fields: [tagId], references: [id])
+
+  @@id([meetingId, tagId])
+  @@index([tagId])
+}
