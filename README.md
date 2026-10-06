@@ -177,27 +177,30 @@ semantics; JSON in/out.
 
 ### Prerequisites
 
-- Node.js 20+ and **Bun** (the project uses Bun as the runtime/package manager)
+- Node.js 20+ and npm (Bun also works)
 - Nothing else — SQLite is a file database, no separate server.
 
 ### Install & run
 
 ```bash
 # 1. Install dependencies
-bun install
+npm install
 
-# 2. Create the SQLite database + apply schema
-bun run db:push
+# 2. Configure the local SQLite database
+cp .env.example .env
 
-# 3. Seed rich demo data (7 meetings, full transcripts, summaries, action items, topics, tags)
-bun run prisma/seed.ts
+# 3. Create the SQLite database + apply schema
+npm run db:push
 
-# 4. Start the dev server
-bun run dev     # → http://localhost:3000
+# 4. Seed rich demo data (7 meetings, full transcripts, summaries, action items, topics, tags)
+npm run db:seed
+
+# 5. Start the dev server
+npm run dev     # -> http://localhost:3000
 ```
 
-Open the **Preview Panel** to view the app. (In this sandbox, `localhost:3000`
-is internal — use the Preview Panel, or "Open in New Tab" above it.)
+Open `http://localhost:3000` to use the app. Bun can be used instead of npm
+where preferred.
 
 ### Lint / build
 
@@ -209,10 +212,10 @@ bun run db:generate
 
 ### Environment
 
-`DATABASE_URL` is set in `.env`:
+Set `DATABASE_URL` in `.env` (copy `.env.example` for local development):
 
 ```
-DATABASE_URL=file:/home/z/my-project/db/custom.db
+DATABASE_URL="file:./db/custom.db"
 ```
 
 ---
