@@ -228,10 +228,11 @@ an empty database with `npm run db:push`; optionally run `npm run db:seed` once
 to load demo content. Seeding replaces existing meetings and should not be
 rerun against data you want to keep.
 
-The included `render.yaml` configures a Render web service with a 1 GB
-persistent disk mounted at `/var/data`. Its startup command applies the schema
-and seeds demo data only once per disk, tracked by a marker file. Render
-persistent disks require a paid service plan.
+The included `render.yaml` configures a Render Free web service. Free instances
+have an ephemeral filesystem and spin down when idle: the SQLite database and
+all meeting changes are lost on restart, redeploy, or spin-down. The startup
+command reapplies the schema and reseeds demo meetings each time the service
+starts. Use this deployment for demos only, not for data you need to retain.
 
 ---
 

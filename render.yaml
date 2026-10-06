@@ -2,19 +2,10 @@ services:
   - type: web
     name: fireflies-ai
     runtime: node
-    plan: starter
+    plan: free
     buildCommand: npm ci && npm run build
-    startCommand: >-
-      npm run db:push &&
-      if [ ! -f /var/data/.seeded ]; then
-      npm run db:seed && touch /var/data/.seeded;
-      fi &&
-      npm run start
+    startCommand: npm run db:push && npm run db:seed && npm run start
     healthCheckPath: /api/stats
-    disk:
-      name: fireflies-data
-      mountPath: /var/data
-      sizeGB: 1
     envVars:
       - key: DATABASE_URL
-        value: file:/var/data/custom.db
+        value: file:/tmp/fireflies.db
