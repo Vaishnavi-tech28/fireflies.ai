@@ -228,6 +228,11 @@ an empty database with `npm run db:push`; optionally run `npm run db:seed` once
 to load demo content. Seeding replaces existing meetings and should not be
 rerun against data you want to keep.
 
+The included `render.yaml` configures a Render web service with a 1 GB
+persistent disk mounted at `/var/data`. Its startup command applies the schema
+and seeds demo data only once per disk, tracked by a marker file. Render
+persistent disks require a paid service plan.
+
 ---
 
 ## 📁 Project Structure
